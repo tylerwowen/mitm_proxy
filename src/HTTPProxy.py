@@ -1,13 +1,15 @@
-from http.server import BaseHTTPRequestHandler, HTTPServer
-
-import urllib.request
-import sys
 import http.client
-import shutil
-from urllib.parse import urlparse
+import sys
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import ThreadingMixIn
+from urllib.parse import urlunsplit, urlsplit
 
 
-def run(server_class=HTTPServer, handler_class=BaseHTTPRequestHandler, port=8080):
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    """Handle requests in a separate thread."""
+
+
+def run(server_class=ThreadedHTTPServer, handler_class=BaseHTTPRequestHandler, port=8080):
     server_address = ('0.0.0.0', port)
     httpd = server_class(server_address, handler_class)
     try:
@@ -20,39 +22,72 @@ def run(server_class=HTTPServer, handler_class=BaseHTTPRequestHandler, port=8080
 
 class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
     protocol_version = 'HTTP/1.1'
-    establishedConns = []
+    establishedConns = {}
 
     def do_GET(self):
         """Serve a GET request."""
         req = self
-        parsedURL = urlparse(req.path)
+        parsedURL = urlsplit(req.path)
+
+        scheme = parsedURL.scheme
         host = parsedURL.netloc
-        path = parsedURL.path
-        print(host, path)
-        # contentLength = req.getheader('Content-Length')
-        # req_body = req.rfile.read(contentLength) if contentLength else None
-        conn = http.client.HTTPConnection(host)
-        conn.request('GET', path, headers=req.headers)
+        url = urlunsplit(('', '', parsedURL.path, parsedURL.query, ''))
+        print(host, url)
+
+        target = (scheme, host)
+        if target not in self.establishedConns:
+            conn = self.buildConn(target)
+        else:
+            conn = self.establishedConns[target]
+
+        try:
+            conn.request(self.command, url, headers=req.headers)
+        except http.client.CannotSendRequest:
+            conn = self.rebuildConn(target)
+            conn.request(self.command, url, headers=req.headers)
+
         res = conn.getresponse()
-        print(res.read())
-        # resContentLength = res.getheader('Content-Length')
-        req.send_response(res.status)
+        self.respondToRequest(res, self.readFrom(res))
+
+    def respondToRequest(self, res, resBody):
+        req = self
+        req.send_response_only(res.status)
         for header in res.getheaders():
             req.send_header(header[0], header[1])
         req.end_headers()
-        req.wfile.write(res.read())
-        conn.close()
+        if self.command is not 'HEAD':
+            req.wfile.write(resBody)
+            req.wfile.flush()
 
-        # print(self.path)
-        # print(self.headers)
-        # request = urllib.request.Request(url=req.path, headers=req.headers)
-        # request.method = 'GET'
-        # print(request.header_items())
-        # with urllib.request.urlopen(request) as f:
-        #     req.send_response(f.getcode())
-        #     for header in f.info()._headers:
-        #         req.send_header(header[0], header[1])
-        #     req.end_headers()
-        #     req.wfile.write(f.read())
-        #     f.close()
+    def readFrom(self, res):
+        if res.fp is None:
+            return b""
 
+        if res.length is None:
+            s = res.fp.read()
+        else:
+            try:
+                s = res._safe_read(res.length)
+            except http.IncompleteRead:
+                res._close_conn()
+                raise
+            res.length = 0
+        res._close_conn()        # we read everything
+        return s
+
+    do_HAED = do_GET
+
+    def do_POST(self):
+        req = self
+        contentLength = req.getheader('Content-Length')
+        req_body = req.rfile.read(contentLength) if contentLength else None
+
+    def buildConn(self, target):
+        conn = http.client.HTTPConnection(target[1])
+        self.establishedConns[target] = conn
+        return conn
+
+    def rebuildConn(self, target):
+        conn = http.client.HTTPConnection(target[1])
+        self.establishedConns[target] = conn
+        return conn
