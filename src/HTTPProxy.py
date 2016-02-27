@@ -4,12 +4,17 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 from urllib.parse import urlunsplit, urlsplit
 
+connTimeout = 9999
+
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Handle requests in a separate thread."""
+    pass
 
 
-def run(server_class=ThreadedHTTPServer, handler_class=BaseHTTPRequestHandler, port=8080):
+def run(server_class=ThreadedHTTPServer, handler_class=BaseHTTPRequestHandler, port=8080, timeout=9999):
+    global connTimeout
+    connTimeout = timeout
     server_address = ('0.0.0.0', port)
     httpd = server_class(server_address, handler_class)
     try:
@@ -34,6 +39,9 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
         url = urlunsplit(('', '', parsedURL.path, parsedURL.query, ''))
         print(host, url)
 
+        contentLength = req.headers['Content-Length']
+        reqBody = req.rfile.read(contentLength) if contentLength else None
+
         target = (scheme, host)
         if target not in self.establishedConns:
             conn = self.buildConn(target)
@@ -41,10 +49,10 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
             conn = self.establishedConns[target]
 
         try:
-            conn.request(self.command, url, headers=req.headers)
+            conn.request(self.command, url, reqBody, req.headers)
         except http.client.CannotSendRequest:
             conn = self.rebuildConn(target)
-            conn.request(self.command, url, headers=req.headers)
+            conn.request(self.command, url, reqBody, req.headers)
 
         res = conn.getresponse()
         self.respondToRequest(res, self.readFrom(res))
@@ -83,11 +91,13 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
         req_body = req.rfile.read(contentLength) if contentLength else None
 
     def buildConn(self, target):
-        conn = http.client.HTTPConnection(target[1])
+        global connTimeout
+        conn = http.client.HTTPConnection(target[1], timeout=connTimeout)
         self.establishedConns[target] = conn
         return conn
 
     def rebuildConn(self, target):
-        conn = http.client.HTTPConnection(target[1])
+        global connTimeout
+        conn = http.client.HTTPConnection(target[1], timeout=connTimeout)
         self.establishedConns[target] = conn
         return conn

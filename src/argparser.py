@@ -13,3 +13,6 @@ parser.add_argument('-l', '--log',
                     help='Logs all the HTTP requests and their corresponding responses under the directory log.')
 
 args = parser.parse_args()
+
+if not args.timeout:
+    args.timeout = 9999
