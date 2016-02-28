@@ -44,7 +44,7 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
         url = urlunsplit(('', '', parsedURL.path, parsedURL.query, ''))
 
         contentLength = req.headers['Content-Length']
-        reqBody = req.rfile.read(contentLength) if contentLength else None
+        reqBody = req.rfile.read(int(contentLength)) if contentLength else None
 
         target = (scheme, host)
         self.establishedConnsLock.acquire()
@@ -63,12 +63,14 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
                     conn.request(self.command, url, reqBody, req.headers)
                 except http.client.ImproperConnectionState:
                     conn.connect()
+                    tries += 1
+                    continue
                 try:
                     res = conn.getresponse()
                     self.respondToRequest(res)
                 except http.client.HTTPException:
-                    # if tries == 5:
-                    #     req.send_error(404)
+                    if tries == 5:
+                        req.send_error(404)
                     print('tries'+str(tries))
                     tries += 1
                     continue

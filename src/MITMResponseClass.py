@@ -19,7 +19,6 @@ class MITMResponseClass(http.client.HTTPResponse):
                 value.append(b'\r\n')
                 self.chunk_left = 0
             value.append(b'0\r\n\r\n')
-            print(value)
             return b''.join(value)
         except http.client.IncompleteRead:
             raise http.client.IncompleteRead(b''.join(value))
