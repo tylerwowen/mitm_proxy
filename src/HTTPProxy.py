@@ -5,10 +5,10 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 from urllib.parse import urlunsplit, urlsplit
 
-# import MITMResponseClass
+import MITMResponseClass
 
 connTimeout = 9999
-# http.client.HTTPConnection.response_class = MITMResponseClass.MITMResponseClass
+http.client.HTTPConnection.response_class = MITMResponseClass.MITMResponseClass
 
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
@@ -67,8 +67,8 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
                     res = conn.getresponse()
                     self.respondToRequest(res)
                 except http.client.HTTPException:
-                    if tries == 5:
-                        req.send_error(404)
+                    # if tries == 5:
+                    #     req.send_error(404)
                     print('tries'+str(tries))
                     tries += 1
                     continue
@@ -78,16 +78,12 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def respondToRequest(self, res):
         req = self
-        resBody = res.read()
         req.send_response_only(res.status)
         for header in res.getheaders():
-            if header[0] == 'Transfer-Encoding':
-                req.send_header('Content-Length', len(resBody))
-            else:
-                req.send_header(header[0], header[1])
+            req.send_header(header[0], header[1])
         req.end_headers()
         if self.command is not 'HEAD':
-            req.wfile.write(resBody)
+            req.wfile.write(res.read())
             req.wfile.flush()
 
     do_HAED = do_GET
