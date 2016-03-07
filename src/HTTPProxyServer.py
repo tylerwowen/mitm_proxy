@@ -1,12 +1,13 @@
+import concurrent.futures
 import socket
-import threading
 from urllib.parse import urlsplit, urlunsplit
 
 
 class MITMProxyServer:
 
-    def __init__(self, port_num=8080):
+    def __init__(self, port_num=8080, num_workers=10):
         self.port = port_num
+        self.num_workers = num_workers
         try:
             # create an INET, STREAMing socket
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -16,23 +17,23 @@ class MITMProxyServer:
                 self.socket.close()
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.bind(('', 0))
-        self.socket.listen(15)
+        self.socket.listen(20)
         print('listening at port ', self.socket.getsockname()[1])
 
     def run(self):
-        while True:
-            (client_socket, address) = self.socket.accept()
-            ct = Worker(client_socket)
-            ct.run()
+        with concurrent.futures.ThreadPoolExecutor(self.num_workers) as executor:
+            while True:
+                (client_socket, address) = self.socket.accept()
+                ct = Worker(client_socket)
+                executor.submit(ct.run)
 
     def close(self):
         self.socket.close()
 
 
-class Worker(threading.Thread):
+class Worker:
 
     def __init__(self, sock):
-        threading.Thread.__init__(self)
         self.client_socket = sock
         self.body_start = b''
         self.body_len = 0
