@@ -5,10 +5,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 from urllib.parse import urlunsplit, urlsplit
 
-import MITMResponseClass
-
 connTimeout = 9999
-http.client.HTTPConnection.response_class = MITMResponseClass.MITMResponseClass
 
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
