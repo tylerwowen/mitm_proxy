@@ -16,3 +16,6 @@ args = parser.parse_args()
 
 if not args.timeout:
     args.timeout = 9999
+
+if not args.numworker:
+    args.numworker = 10

@@ -1,9 +1,16 @@
 import os
 
 import argparser as args
-import HTTPProxy
+from HTTPProxyServer import MITMProxyServer
 
 if args.args.log and not os.path.exists(args.args.log):
     os.makedirs(args.args.log)
 
-HTTPProxy.run(handler_class=HTTPProxy.MITMHTTPRequestHandler, port=args.args.port, timeout=args.args.timeout)
+opts = args.args
+try:
+    server = MITMProxyServer(port_num=opts.port, num_workers=opts.numworker, timeout=opts.timeout, log=opts.log)
+    server.run()
+except KeyboardInterrupt:
+    print("\nKeyboard interrupt received, exiting.")
+    if server is not None:
+        server.close()
