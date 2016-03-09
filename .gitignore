@@ -24,6 +24,7 @@ com_crashlytics_export_strings.xml crashlytics.properties crashlytics-build.prop
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/ *.py[cod] *$py.class
+src/__pycache__/
 # C extensions
 *.so
 # Distribution / packaging

@@ -4,7 +4,7 @@ import shutil
 import socket
 from urllib.parse import urlsplit
 
-import HTTPSConnectionHandler as HTTPS
+import HTTPSConnectionHandler as https
 
 
 class MITMProxyServer:
@@ -54,7 +54,7 @@ class Worker:
     def run(self):
         request = response = None
         try:
-            request = handle_request(self.client_socket)
+            request, self.client_socket = handle_request(self.client_socket)
 
             response = self.get_response(request)
 
@@ -66,17 +66,6 @@ class Worker:
         finally:
             self.log_traffic(request, response)
             self.cleanup()
-
-    def https_proxy(self):
-        handler = HTTPS.HTTPSConnectionHandler()
-        self.server_socket, cert = handler.connect_to_remote_server(self.remote_host, self.remote_port)
-        context = handler.get_context(cert)
-        self.client_socket = context.wrap_socket(self.client_socket, server_side=True)
-        # try:
-        #
-        # finally:
-        #     self.client_socket.shutdown(socket.SHUT_RDWR)
-        #     self.client_socket.close()
 
     def get_response(self, request):
         try:
@@ -122,11 +111,15 @@ def handle_request(sock):
     # HTTP or HTTPS
     requestline = readline(sock)
     method, path = parse_request_line(requestline)
-
-    if method is 'CONNECT':
+    server_ssl_sock = None
+    if method == 'CONNECT':
+        server_ssl_sock, sock = https.build_ssl_conns(sock, path)
+        requestline = readline(sock)
         return None
-    else:
-        return receive_request(sock, requestline)
+    request = receive_request(sock, requestline)
+
+    request.server_sock = server_ssl_sock
+    return request, sock
 
 
 def readline(sock):
@@ -221,12 +214,6 @@ def parse_body_length(header):
         if 'Transfer-Encoding' in header and 'chunked' in header:
             return -1
     return 0
-
-
-def parse_connect_path(path):
-    host = path[:path.find(':')]
-    port = int(path[path.find(':')+1:])
-    return host, port
 
 
 def receive_body(sock, body_start, reqres):
