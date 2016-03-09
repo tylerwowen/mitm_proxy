@@ -1,42 +1,38 @@
 import concurrent.futures
 import os
-import socket
-from urllib.parse import urlsplit, urlunsplit
-
 import shutil
+import socket
+from urllib.parse import urlsplit
+
+import HTTPSConnectionHandler as HTTPS
 
 
 class MITMProxyServer:
 
-    def __init__(self, port_num=8080, num_workers=10, timeout=9999, log=None):
+    def __init__(self, port_num=8080):
         self.port = port_num
-        self.num_workers = num_workers
-        self.timeout = timeout
-        self.log = log
+
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            # create an INET, STREAMing socket
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.bind(('', self.port))
-        except socket.error as e:
-            print(e)
-            if self.socket:
-                self.socket.close()
+        except OSError:
+            self.socket.close()
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.bind(('', 0))
         self.socket.listen(20)
         print('listening at port ', self.socket.getsockname()[1])
-        print(num_workers, 'workers')
 
-    def run(self):
+    def run(self, num_workers=10, timeout=9999, log=None):
+        if log is not None:
+            if os.path.exists(log):
+                shutil.rmtree(log)
+            os.mkdir(log)
+
         index = 0
-        if self.log:
-            if os.path.exists(self.log):
-                shutil.rmtree(self.log)
-            os.mkdir(self.log)
-        self.executor = concurrent.futures.ThreadPoolExecutor(self.num_workers)
+        self.executor = concurrent.futures.ThreadPoolExecutor(num_workers)
         while True:
             (client_socket, address) = self.socket.accept()
-            ct = Worker(client_socket, self.timeout, index, self.log)
+            ct = Worker(client_socket, timeout, index, log)
             self.executor.submit(ct.run)
             index += 1
 
@@ -53,99 +49,52 @@ class Worker:
         self.timeout = timeout
         self.index = index
         self.log = log
-        self.body_start = b''
-        self.body_len = 0
-        self.method = 'GET'
-        self.remote_port = 80
-        self.chunked = False
+        self.server_socket = None
 
     def run(self):
-        request_header = self.receive_request_header()
-        if not request_header:
-            self.cleanup()
-            return
-        self.parse_request(request_header)
-        request_body = self.receive_request_body()
-        request = request_header + request_body
-
-        if self.method == 'CONNECT':
-            self.cleanup()
-            return
-        self.body_len = 0
-        self.chunked = False
-
-        response = None
-        if self.send_request(request):
-            try:
-                response_header = self.receive_response_header()
-                self.parse_response_header(response_header)
-                response_body = self.receive_response_body()
-                print('received body for ', self.remote_host)
-                response = response_header + response_body
-                self.send_response(response)
-            except TimeoutError:
-                self.send_error(504, 'Gateway Timeout')
-        self.log_traffic(request, response)
-        self.cleanup()
-
-    def receive_request_header(self):
-        headers, self.body_start = receive_header(self.client_socket)
-        return headers
-
-    def parse_request(self, request_header):
-        raw_headers = str(request_header, 'iso-8859-1').split('\r\n')
-        requestline = raw_headers[0]
-        words = requestline.split()
-        if len(words) == 3:
-            self.method, path, version = words
-        elif len(words) == 2:
-            self.method, path = words
-        else:
-            return False
-
-        for header in raw_headers:
-            if 'Content-Length' in header:
-                self.body_len = int(header.split(':')[1])
-
-        parsedURL = urlsplit(path)
-        self.remote_host = parsedURL.netloc
-
-        if parsedURL.port:
-            self.remote_port = parsedURL.port
-
-    def receive_request_body(self):
-        if self.chunked:
-            return receive_body_chunked(self.client_socket, self.body_start)
-        return receive_body(self.client_socket, self.body_start, self.body_len)
-
-    def send_request(self, data):
+        request = response = None
         try:
-            self.server_socket = socket.create_connection((self.remote_host, self.remote_port), self.timeout)
+            request = handle_request(self.client_socket)
+
+            response = self.get_response(request)
+
+            self.send_response(response.payload)
+        except ClientDisconnected:
+            pass
+        except TimeoutError:
+            self.send_error(504, 'Gateway Timeout')
+        finally:
+            self.log_traffic(request, response)
+            self.cleanup()
+
+    def https_proxy(self):
+        handler = HTTPS.HTTPSConnectionHandler()
+        self.server_socket, cert = handler.connect_to_remote_server(self.remote_host, self.remote_port)
+        context = handler.get_context(cert)
+        self.client_socket = context.wrap_socket(self.client_socket, server_side=True)
+        # try:
+        #
+        # finally:
+        #     self.client_socket.shutdown(socket.SHUT_RDWR)
+        #     self.client_socket.close()
+
+    def get_response(self, request):
+        try:
+            self.create_server_conn(request)
         except socket.error:
             self.send_error(502, 'Bad Gateway')
-            return False
-        try:
-            self.server_socket.sendall(data)
-        except socket.error:
-            return False
-        return True
+            raise HostNotReachable
+        self.send_request(request.payload)
+        return receive_response(self.server_socket)
 
-    def receive_response_header(self):
-        headers, self.body_start = receive_header(self.server_socket)
-        return headers
+    def create_server_conn(self, request):
+        if request.scheme == 'http':
+            self.server_socket = socket.create_connection((request.host, request.port), self.timeout)
+        else:
+            self.server_socket = request.server_sock
 
-    def parse_response_header(self, response_header):
-        raw_headers = str(response_header, 'iso-8859-1').split('\r\n')
-        for header in raw_headers:
-            if 'Content-Length' in header:
-                self.body_len = int(header.split(':')[1])
-            if 'Transfer-Encoding' in header and 'chunked' in header:
-                self.chunked = True
-
-    def receive_response_body(self):
-        if self.chunked:
-            return receive_body_chunked(self.server_socket, self.body_start)
-        return receive_body(self.server_socket, self.body_start, self.body_len)
+    def send_request(self, data):
+        self.server_socket.sendall(data)
 
     def send_response(self, data):
         self.client_socket.sendall(data)
@@ -161,13 +110,65 @@ class Worker:
 
     def log_traffic(self, request, response):
         if self.log is not None:
-            filename = str(self.index) + '_' + self.client_socket.getpeername()[0] + '_' + self.remote_host
+            filename = str(self.index) + '_' + self.client_socket.getpeername()[0] + '_' + request.host
             f = open(os.path.join(self.log, filename), 'wb')
-            request = request if request is not None else b''
-            response = response if response is not None else b''
+            request = request.payload if request is not None else b''
+            response = response.payload if response is not None else b''
             f.write(request + b'\n' + response)
             f.close()
 
+
+def handle_request(sock):
+    # HTTP or HTTPS
+    requestline = readline(sock)
+    method, path = parse_request_line(requestline)
+
+    if method is 'CONNECT':
+        return None
+    else:
+        return receive_request(sock, requestline)
+
+
+def readline(sock):
+    chars = []
+    while True:
+        char = sock.recv(1)
+        if not char:
+            raise ClientDisconnected
+        chars.append(char)
+        if char == b'\n':
+            break
+        if char == b'\r':
+            n_char = sock.recv(1)
+            chars.append(n_char)
+            if n_char == b'\n':
+                break
+    return b''.join(chars)
+
+
+def parse_request_line(requestline):
+    words = str(requestline, 'iso-8859-1').split()
+    if len(words) == 3:
+        method, path, version = words
+    elif len(words) == 2:
+        method, path = words
+    else:
+        raise InvalidRequest('Cannot parse request line')
+    return method.upper(), path
+
+
+def receive_request(sock, requestline):
+    header, body_start = receive_header(sock)
+    request = parse_request_header(requestline, header)
+    receive_body(sock, body_start, request)
+    return request
+
+
+def receive_response(sock):
+    header, body_start = receive_header(sock)
+    response = parse_response_header(header)
+    receive_body(sock, body_start, response)
+    return response
 
 
 def receive_header(sock):
@@ -177,9 +178,7 @@ def receive_header(sock):
     while True:
         chunk = sock.recv(4096)
         if not chunk:
-            print('break')
-            sock.close()
-            break
+            raise ClientDisconnected
         if end in chunk:
             chunks.append(chunk[:chunk.find(end) + 4])
             body_start = chunk[chunk.find(end) + 4:]
@@ -197,15 +196,54 @@ def receive_header(sock):
     return b''.join(chunks), body_start
 
 
-def receive_body(sock, body_start, body_len):
+def parse_request_header(requestline, header):
+    body_len = parse_body_length(header)
+    method, path = parse_request_line(requestline)
+
+    parsed_URL = urlsplit(path)
+    host = parsed_URL.netloc
+    port = parsed_URL.port
+    scheme = parsed_URL.scheme.lower()
+    complete_header = requestline + header
+    return Request(complete_header, host, port, body_len, scheme)
+
+
+def parse_response_header(header):
+    body_len = parse_body_length(header)
+    return Response(header, body_len)
+
+
+def parse_body_length(header):
+    header_tuple = str(header, 'iso-8859-1').split('\r\n')
+    for header in header_tuple:
+        if 'Content-Length' in header:
+            return int(header.split(':')[1])
+        if 'Transfer-Encoding' in header and 'chunked' in header:
+            return -1
+    return 0
+
+
+def parse_connect_path(path):
+    host = path[:path.find(':')]
+    port = int(path[path.find(':')+1:])
+    return host, port
+
+
+def receive_body(sock, body_start, reqres):
+    if reqres.chunked:
+        complete_body = receive_body_chunked(sock, body_start)
+    else:
+        complete_body = receive_body_length(sock, body_start, reqres.body_length)
+    reqres.add_body(complete_body)
+
+
+def receive_body_length(sock, body_start, body_length):
     chunks = [body_start]
     received = len(body_start)
-    while received < body_len:
+    while received < body_length:
         chunk = sock.recv(4096)
         if not chunk:
-            print('break')
-            sock.close()
-            break
+            raise ClientDisconnected
         chunks.append(chunk)
         received += len(chunk)
     return b''.join(chunks)
@@ -219,9 +257,7 @@ def receive_body_chunked(sock, body_start):
     while True:
         chunk = sock.recv(4096)
         if not chunk:
-            print('break')
-            sock.close()
-            break
+            raise ClientDisconnected
         chunks.append(chunk)
         if end in chunk:
             break
@@ -234,6 +270,50 @@ def receive_body_chunked(sock, body_start):
                 break
     return b''.join(chunks)
 
+
+class Request:
+
+    def __init__(self, header, host, port, body_length, scheme):
+        self.host = host
+        self.port = port if port is not None else 80
+        self.body_length = body_length
+        self.chunked = True if body_length == -1 else False
+        self.payload = header
+        self.scheme = scheme
+        self.server_sock = None
+
+    def add_body(self, body):
+        self.payload += body
+
+
+class Response:
+
+    def __init__(self, header, body_length):
+        self.body_length = body_length
+        self.chunked = True if body_length == -1 else False
+        self.payload = header
+
+    def add_body(self, body):
+        self.payload += body
+
+
+class Error(Exception):
+    """  Base error class """
+    pass
+
+
+class InvalidRequest(Error):
+
+    def __init__(self, message):
+        self.message = message
+
+
+class ClientDisconnected(Error):
+    pass
+
+
+class HostNotReachable(Error):
+    pass
 
 if __name__ == "__main__":
     try:

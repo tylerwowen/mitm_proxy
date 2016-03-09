@@ -8,8 +8,8 @@ if args.args.log and not os.path.exists(args.args.log):
 
 opts = args.args
 try:
-    server = MITMProxyServer(port_num=opts.port, num_workers=opts.numworker, timeout=opts.timeout, log=opts.log)
-    server.run()
+    server = MITMProxyServer(port_num=opts.port)
+    server.run(num_workers=opts.numworker, timeout=opts.timeout, log=opts.log)
 except KeyboardInterrupt:
     print("\nKeyboard interrupt received, exiting.")
     if server is not None:
