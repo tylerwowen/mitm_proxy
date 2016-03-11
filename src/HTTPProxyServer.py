@@ -65,7 +65,9 @@ class Worker:
         except ClientDisconnected:
             pass
         except TimeoutError:
-            self.send_error(504, 'Gateway Timeout')
+            send_msg(self.client_socket, 504, 'Gateway Timeout')
+        except Exception as e:
+            print('error happened', e)
         finally:
             self.log_traffic(request, response)
             self.cleanup()
@@ -74,7 +76,7 @@ class Worker:
         try:
             self.create_server_conn(request)
         except socket.error:
-            self.send_error(502, 'Bad Gateway')
+            send_msg(self.client_socket, 502, 'Bad Gateway')
             raise HostNotReachable
         self.send_request(request.payload)
         return receive_response(self.server_socket)
@@ -90,9 +92,6 @@ class Worker:
 
     def send_response(self, data):
         self.client_socket.sendall(data)
-
-    def send_error(self, code, msg):
-        self.client_socket.sendall(('HTTP/1.1 %d %s\r\n\r\n' % (code, msg)).encode('latin-1', 'strict'))
 
     def cleanup(self):
         if self.client_socket is not None:
@@ -116,9 +115,10 @@ def handle_request(sock):
     method, path = parse_request_line(requestline)
     server_ssl_sock = None
     if method == 'CONNECT':
-        server_ssl_sock, sock, requestline = handle_conn_request(sock, path)
-
-    request = receive_request(sock, requestline, path)
+        server_ssl_sock, sock = handle_conn_request(sock, path)
+        request = receive_request(sock)
+    else:
+        request = receive_request(sock, requestline)
 
     request.server_sock = server_ssl_sock
     return request, sock
@@ -144,8 +144,7 @@ def readline(sock):
 def handle_conn_request(sock, path):
     header, body_start = receive_header(sock)
     server_ssl_sock, sock = https.build_ssl_conns(sock, path)
-    requestline = readline(sock)
-    return server_ssl_sock, sock, requestline
+    return server_ssl_sock, sock
 
 
 def parse_request_line(requestline):
@@ -159,9 +158,9 @@ def parse_request_line(requestline):
     return method.upper(), path
 
 
-def receive_request(sock, requestline, path):
+def receive_request(sock, requestline=b''):
     header, body_start = receive_header(sock, requestline)
-    request = parse_request_header(header, path)
+    request = parse_request_header(header)
     receive_body(sock, body_start, request)
     return request
 
@@ -198,8 +197,10 @@ def receive_header(sock, requestline=b''):
     return b''.join(chunks), body_start
 
 
-def parse_request_header(header, path):
+def parse_request_header(header):
     body_len = parse_body_length(header)
+    requestline = header.split(b'\r\n')[0]
+    method, path = parse_request_line(requestline)
     parsed_URL = urlsplit(path)
     host = parsed_URL.netloc
     port = parsed_URL.port
@@ -262,6 +263,10 @@ def receive_body_chunked(sock, body_start):
                 chunks.pop()
                 break
     return b''.join(chunks)
+
+
+def send_msg(sock, code, msg):
+    sock.sendall(('HTTP/1.1 %d %s\r\n\r\n' % (code, msg)).encode('latin-1', 'strict'))
 
 
 class Request:
