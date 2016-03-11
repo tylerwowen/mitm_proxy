@@ -23,11 +23,7 @@ class MITMProxyServer:
         print('listening at port ', self.socket.getsockname()[1])
 
     def run(self, num_workers=10, timeout=9999, log=None):
-        if log is not None:
-            if os.path.exists(log):
-                shutil.rmtree(log)
-            os.mkdir(log)
-
+        prepare_log_dir(log)
         index = 0
         self.executor = concurrent.futures.ThreadPoolExecutor(num_workers)
         while True:
@@ -40,6 +36,13 @@ class MITMProxyServer:
         if self.executor is not None:
             self.executor.shutdown(False)
         self.socket.close()
+
+
+def prepare_log_dir(log):
+        if log is not None:
+            if os.path.exists(log):
+                shutil.rmtree(log)
+            os.mkdir(log)
 
 
 class Worker:
@@ -113,10 +116,9 @@ def handle_request(sock):
     method, path = parse_request_line(requestline)
     server_ssl_sock = None
     if method == 'CONNECT':
-        server_ssl_sock, sock = https.build_ssl_conns(sock, path)
-        requestline = readline(sock)
-        return None
-    request = receive_request(sock, requestline)
+        server_ssl_sock, sock, requestline = handle_conn_request(sock, path)
+
+    request = receive_request(sock, requestline, path)
 
     request.server_sock = server_ssl_sock
     return request, sock
@@ -139,6 +141,13 @@ def readline(sock):
     return b''.join(chars)
 
 
+def handle_conn_request(sock, path):
+    header, body_start = receive_header(sock)
+    server_ssl_sock, sock = https.build_ssl_conns(sock, path)
+    requestline = readline(sock)
+    return server_ssl_sock, sock, requestline
+
+
 def parse_request_line(requestline):
     words = str(requestline, 'iso-8859-1').split()
     if len(words) == 3:
@@ -150,9 +159,9 @@ def parse_request_line(requestline):
     return method.upper(), path
 
 
-def receive_request(sock, requestline):
-    header, body_start = receive_header(sock)
-    request = parse_request_header(requestline, header)
+def receive_request(sock, requestline, path):
+    header, body_start = receive_header(sock, requestline)
+    request = parse_request_header(header, path)
     receive_body(sock, body_start, request)
     return request
 
@@ -164,9 +173,9 @@ def receive_response(sock):
     return response
 
 
-def receive_header(sock):
+def receive_header(sock, requestline=b''):
     end = b'\r\n\r\n'
-    chunks = []
+    chunks = [requestline]
     body_start = b''
     while True:
         chunk = sock.recv(4096)
@@ -189,16 +198,13 @@ def receive_header(sock):
     return b''.join(chunks), body_start
 
 
-def parse_request_header(requestline, header):
+def parse_request_header(header, path):
     body_len = parse_body_length(header)
-    method, path = parse_request_line(requestline)
-
     parsed_URL = urlsplit(path)
     host = parsed_URL.netloc
     port = parsed_URL.port
     scheme = parsed_URL.scheme.lower()
-    complete_header = requestline + header
-    return Request(complete_header, host, port, body_len, scheme)
+    return Request(header, host, port, body_len, scheme)
 
 
 def parse_response_header(header):
