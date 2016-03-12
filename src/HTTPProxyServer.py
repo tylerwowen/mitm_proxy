@@ -218,9 +218,10 @@ def parse_response_header(header):
 def parse_body_length(header):
     header_list = str(header, 'iso-8859-1').split('\r\n')
     for header in header_list:
-        if 'Content-Length' in header:
+        lowered = header.lower()
+        if 'content-length' in lowered:
             return int(header.split(':')[1])
-        if 'Transfer-Encoding' in header and 'chunked' in header:
+        if 'transfer-encoding' in lowered and 'chunked' in lowered:
             return -1
     return 0
 
@@ -308,9 +309,10 @@ class Response:
         header_list = str(self.header, 'iso-8859-1').split('\r\n')
         new_list = []
         for i in range(0, len(header_list)):
-            if 'Transfer-Encoding' in header_list[i] and 'chunked' in header_list[i]:
+            lowered = header_list[i].lower()
+            if 'transfer-encoding' in lowered and 'chunked' in lowered:
                 return
-            if 'Content-Length' in header_list[i]:
+            if 'content-length' in lowered:
                 header_list[i] = 'Content-Length:' + str(len(self.body))
             new_list.append(bytes(header_list[i], 'iso-8859-1'))
         self.header = b'\r\n'.join(new_list)

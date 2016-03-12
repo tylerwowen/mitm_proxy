@@ -6,13 +6,6 @@ from html.parser import HTMLParser
 IMAGE_DIR = '../resources/whisper.gz'
 
 
-def response_spoof(request, response):
-    if 'www.buzzfeed.com' in request.host:
-        buzzfeed_spoof(request, response)
-    if 'cdn-client.wimages.net' in request.host:
-        whisper_spoof(response)
-
-
 def request_spoof(request):
     if 'api.tumblr.com' in request.host:
         if b'/v2/search/' in request.payload:
@@ -20,6 +13,14 @@ def request_spoof(request):
         if b'/v2/mobile/search' in request.payload:
             tumblr_spoof_button_pressed(request)
 
+
+def response_spoof(request, response):
+    if 'www.buzzfeed.com' in request.host:
+        buzzfeed_spoof(request, response)
+    if 'cdn-client.wimages.net' in request.host:
+        whisper_spoof(response)
+    if b'/api/v2/getBroadcasts' in request.payload:
+        periscope_spoof(response)
 
 
 def buzzfeed_spoof(request, response):
@@ -67,24 +68,8 @@ def tumblr_spoof_button_pressed(request):
     request.payload = bytes(req_str, 'iso-8859-1')
 
 
-class BuzzFeedHTMLParser(HTMLParser):
-    def __init__(self):
-        HTMLParser.__init__(self)
-        self.title_found = False
-        self.title = ''
-
-    def handle_starttag(self, tag, attrs):
-        if tag != 'h1':
-            return
-        for name, value in attrs:
-            if name == 'class' and value == 'title':
-                self.title_found = True
-
-    def handle_endtag(self, tag):
-        self.title_found = False
-
-    def handle_data(self, data):
-        if self.title_found:
-            self.title = data
-            return
+def periscope_spoof(response):
+    json_str = response.body.decode("utf-8", "strict")
+    modified = re.sub(r'"n_watching":[0-9]*,', '"n_watching":1,', json_str)
+    response.replace_body(bytes(modified, 'utf-8'))
 
