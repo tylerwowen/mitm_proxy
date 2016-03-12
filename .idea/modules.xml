@@ -3,7 +3,6 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/MITM.iml" filepath="$PROJECT_DIR$/.idea/MITM.iml" />
-      <module fileurl="file://$USER_HOME$/Downloads/mitmproxy-0.15/.idea/mitmproxy-0.15.iml" filepath="$USER_HOME$/Downloads/mitmproxy-0.15/.idea/mitmproxy-0.15.iml" />
     </modules>
   </component>
 </project>

@@ -5,6 +5,7 @@ import socket
 from urllib.parse import urlsplit
 
 import HTTPSConnectionHandler as https
+from modifier import spoof
 
 
 class MITMProxyServer:
@@ -60,7 +61,7 @@ class Worker:
             request, self.client_socket = handle_request(self.client_socket)
 
             response = self.get_response(request)
-
+            spoof(request, response)
             self.send_response(response.payload)
         except ClientDisconnected:
             pass
@@ -105,7 +106,7 @@ class Worker:
             f = open(os.path.join(self.log, filename), 'wb')
             request = request.payload if request is not None else b''
             response = response.payload if response is not None else b''
-            f.write(request + b'\n' + response)
+            f.write(request + b'\n\n' + response)
             f.close()
 
 
@@ -215,8 +216,8 @@ def parse_response_header(header):
 
 
 def parse_body_length(header):
-    header_tuple = str(header, 'iso-8859-1').split('\r\n')
-    for header in header_tuple:
+    header_list = str(header, 'iso-8859-1').split('\r\n')
+    for header in header_list:
         if 'Content-Length' in header:
             return int(header.split(':')[1])
         if 'Transfer-Encoding' in header and 'chunked' in header:
@@ -291,9 +292,28 @@ class Response:
         self.body_length = body_length
         self.chunked = True if body_length == -1 else False
         self.payload = header
+        self.header = header
+        self.body = b''
 
     def add_body(self, body):
         self.payload += body
+        self.body = body
+
+    def replace_body(self, body):
+        self.body = body
+        self.update_content_length()
+        self.payload = self.header + body
+
+    def update_content_length(self):
+        header_list = str(self.header, 'iso-8859-1').split('\r\n')
+        new_list = []
+        for i in range(0, len(header_list)):
+            if 'Transfer-Encoding' in header_list[i] and 'chunked' in header_list[i]:
+                return
+            if 'Content-Length' in header_list[i]:
+                header_list[i] = 'Content-Length:' + str(len(self.body))
+            new_list.append(bytes(header_list[i], 'iso-8859-1'))
+        self.header = b'\r\n'.join(new_list)
 
 
 class Error(Exception):

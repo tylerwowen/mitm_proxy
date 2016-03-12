@@ -10,13 +10,13 @@ class UtilTests(unittest.TestCase):
         # result = sut.readline()
 
     def test_parse_request_line_good(self):
-        requestline = 'GET test.com HTTP/1.1\r\n'
+        requestline = b'GET test.com HTTP/1.1\r\n'
         method, path = sut.parse_request_line(requestline)
         self.assertEqual(method, 'GET')
         self.assertEqual(path, 'test.com')
 
     def test_parse_request_line_bad(self):
-        requestline = 'GET test.co m HTTP/1.1\r\n'
+        requestline = b'GET test.co m HTTP/1.1\r\n'
         try:
             sut.parse_request_line(requestline)
         except sut.InvalidRequest:

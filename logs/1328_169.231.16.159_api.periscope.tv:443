@@ -1,0 +1,27 @@
+POST /api/v2/followers HTTP/1.1
+User-Agent: tv.periscope.android/1.3.4 (1900190)
+package: tv.periscope.android
+build: 4567762
+locale: en
+install_id: 28c23e8fc3b93ec4-tv.periscope.android
+os: 5.1/22/LPI23.29-17.5
+Content-Type: application/json; charset=UTF-8
+Content-Length: 220
+Host: api.periscope.tv
+Connection: Keep-Alive
+Accept-Encoding: gzip
+
+{"user_id":"1YLEJRgNgyENn","cookie":"WMS6vnsiVXNlcklkIjoiMVZHanZNa2FOR0tPayIsIlNlc3Npb24iOiJ3ZkVGMk56S3JYTHRad0I1Nm9Wd0Q0TVFncUNBX2Z3VzJCOTN6ekJmWDJ3PSIsIlZlcnNpb24iOjF9qVoqqd77-2qQqswZsqWUzi_rMXAiwgPlfaGBl1tPX8g\u003d"}
+HTTP/1.1 200 OK
+Cache-Control: max-age=0, s-max-age=0, no-cache, no-store, private
+Content-Type: application/json
+Date: Fri, 11 Mar 2016 19:05:12 GMT
+Expires: Fri, 11 Mar 2016 19:05:12 GMT
+Last-Modified: Fri, 11 Mar 2016 19:05:12 GMT
+Pragma: no-cache
+Strict-Transport-Security: max-age=31536000; preload
+transfer-encoding: chunked
+Connection: keep-alive
+
+ea3
+[{"class_name":"User","id":"1DLKBkbeWqjJb","created_at":"2015-11-03T18:55:13.681561058-08:00","updated_at":"2016-03-11T19:04:27.447947954-08:00","is_beta_user":false,"is_employee":false,"is_twitter_verified":false,"twitter_screen_name":"ThomasKawalya","username":"ThomasKawalya","display_name":"Thomas kawalya","description":"","profile_image_urls":[{"url":"http://pbs.twimg.com/profile_images/378800000703507832/254079b2620c08266b603a2e1d2f2d25_reasonably_small.jpeg","ssl_url":"https://pbs.twimg.com/profile_images/378800000703507832/254079b2620c08266b603a2e1d2f2d25_reasonably_small.jpeg","width":128,"height":128},{"url":"http://pbs.twimg.com/profile_images/378800000703507832/254079b2620c08266b603a2e1d2f2d25_200x200.jpeg","ssl_url":"https://pbs.twimg.com/profile_images/378800000703507832/254079b2620c08266b603a2e1d2f2d25_200x200.jpeg","width":200,"height":200},{"url":"http://pbs.twimg.com/profile_images/378800000703507832/254079b2620c08266b603a2e1d2f2d25_400x400.jpeg","ssl_url":"https://pbs.twimg.com/profile_images/378800000703507832/254079b2620c08266b603a2e1d2f2d25_400x400.jpeg","width":400,"height":400}],"initials":"","n_followers":7,"n_following":48,"is_following":false,"is_muted":false,"time":"2016-03-11T19:04:27-08:00"},{"class_name":"User","id":"1zvENROYJDEed","created_at":"2016-01-10T10:05:56.067783848-08:00","updated_at":"2016-03-11T19:04:27.012059311-08:00","is_beta_user":false,"is_employee":false,"is_twitter_verified":false,"twitter_screen_name":"RyanNeathery","username":"RyanNeathery","display_name":"Ryan Taylor Neathery","description":"","profile_image_urls":[{"url":"http://abs.twimg.com/sticky/default_profile_images/default_profile_3_reasonably_small.png","ssl_url":"https://abs.twimg.com/sticky/default_profile_images/default_profile_3_reasonably_small.png","width":128,"height":128},{"url":"http://abs.twimg.com/sticky/default_profile_images/default_profile_3_200x200.png","ssl_url":"https://abs.twimg.com/sticky/default_profile_images/default_profile_3_200x200.png","width":200,"height":200},{"url":"http://abs.twimg.com/sticky/default_profile_images/default_profile_3_400x400.png","ssl_url":"https://abs.twimg.com/sticky/default_profile_images/default_profile_3_400x400.png","width":400,"height":400}],"initials":"","n_followers":23,"n_following":40,"is_following":false,"is_muted":false,"time":"2016-03-11T19:04:27-08:00"},{"class_name":"User","id":"1drQevrlroKbG","created_at":"2016-03-09T16:40:19.681791544-08:00","updated_at":"2016-03-11T19:04:20.823411923-08:00","is_beta_user":false,"is_employee":false,"is_twitter_verified":false,"twitter_screen_name":"ihateshisha","username":"ihateshisha","display_name":"Abz","description":"LDN 🇬🇧","profile_image_urls":[{"url":"http://pbs.twimg.com/profile_images/634880543553929216/fiuc4sxI_reasonably_small.jpg","ssl_url":"https://pbs.twimg.com/profile_images/634880543553929216/fiuc4sxI_reasonably_small.jpg","width":128,"height":128},{"url":"http://pbs.twimg.com/profile_images/634880543553929216/fiuc4sxI_200x200.jpg","ssl_url":"https://pbs.twimg.com/profile_images/634880543553929216/fiuc4sxI_200x200.jpg","width":200,"height":200},{"url":"http://pbs.twimg.com/profile_images/634880543553929216/fiuc4sxI_400x400.jpg","ssl_url":"https://pbs.twimg.com/profile_images/634880543553929216/fiuc4sxI_400x400.jpg","width":400,"height":400}],"initials":"","n_followers":2,"n_following":25,"is_following":false,"is_muted":false,"time":"2016-03-11T19:04:20-08:00"},{"class_name":"User","id":"1PXEdyJVXnQev","created_at":"2015-12-28T18:45:30.190731361-08:00","updated_at":"2016-03-11T19:04:20.660894760-08:00","is_beta_user":false,"is_employee":false,"is_twitter_verified":false,"twitter_screen_name":"gunner_xxp","username":"gunner_xxp","di

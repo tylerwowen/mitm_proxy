@@ -1,3 +1,4 @@
+import os
 import pprint
 import socket
 import ssl
@@ -54,7 +55,7 @@ def build_ssl_conns(client_socket, path):
     client_socket.sendall(('HTTP/1.1 %d %s\r\n\r\n' % (200, 'OK')).encode('latin-1', 'strict'))
 
     cert_dict = server_ssl_sock.getpeercert()
-    crt_dir = generate_fake_cert(cert_dict)
+    crt_dir = generate_fake_cert(cert_dict, path)
     client_ssl_sock = build_client_conn(client_socket, crt_dir)
 
     return server_ssl_sock, client_ssl_sock
@@ -89,16 +90,18 @@ def parse_connect_path(path):
     return host, port
 
 
-def generate_fake_cert(cert_dict):
+def generate_fake_cert(cert_dict, path):
+    crt_dir = CERT_ROOT + path[:path.find(':')] + '.crt'
+    if os.path.isfile(crt_dir):
+        return crt_dir
     csr_dir, config_dir, common_name = generate_csr(cert_dict)
-    crt_dir = CERT_ROOT + common_name + '.crt'
     subprocess.call('openssl x509 -req -days 365 -extensions v3_req' +
                     ' -CAserial ' + SRL_DIR +
                     ' -CAkey ' + CA_KEY_DIR +
                     ' -CA ' + CA_CERT_DIR +
                     ' -in ' + csr_dir +
                     ' -extfile ' + config_dir +
-                    ' -out ' + crt_dir, shell=True)
+                    ' -out ' + crt_dir, shell=True, stderr=subprocess.DEVNULL)
     return crt_dir
 
 
@@ -108,7 +111,7 @@ def generate_csr(cert_dict):
     subprocess.call('openssl req -new' +
                     ' -config ' + config_dir +
                     ' -key ' + GEN_KEY_DIR +
-                    ' -out ' + csr_dir, shell=True)
+                    ' -out ' + csr_dir, shell=True, stderr=subprocess.DEVNULL)
     return csr_dir, config_dir, common_name
 
 
