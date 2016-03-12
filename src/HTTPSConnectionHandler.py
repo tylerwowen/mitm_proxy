@@ -3,19 +3,22 @@ import socket
 import ssl
 import subprocess
 
-CERT_ROOT = '../certificates/'
+CA_ROOT = '../certificates/'
+CERT_ROOT = '../temp_certs/'
 CA_KEY = 'MITM_CA.key'
-CA_KEY_DIR = CERT_ROOT + CA_KEY
+CA_KEY_DIR = CA_ROOT + CA_KEY
 CA_CERT = 'MITM_CA.crt'
-CA_CERT_DIR = CERT_ROOT + CA_CERT
+CA_CERT_DIR = CA_ROOT + CA_CERT
 GEN_KEY = 'cert_gen.key'
-GEN_KEY_DIR = CERT_ROOT + GEN_KEY
+GEN_KEY_DIR = CA_ROOT + GEN_KEY
+SRL_DIR = CERT_ROOT + 'MITM_CA.srl'
+
 SAN_TEMP = '''[req]
 req_extensions = v3_req
 distinguished_name = req_distinguished_name
 prompt = no
 
-[v3_req]
+[ v3_req ]
 basicConstraints=CA:FALSE
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 
@@ -26,12 +29,13 @@ L = Goleta
 O = Tyler
 OU = MyDivision
 '''
+
 SAN_TEMP_ALT = '''[req]
 req_extensions = v3_req
 distinguished_name = req_distinguished_name
 prompt = no
 
-[v3_req]
+[ v3_req ]
 basicConstraints=CA:FALSE
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 subjectAltName = @alt_names
@@ -86,12 +90,14 @@ def parse_connect_path(path):
 
 
 def generate_fake_cert(cert_dict):
-    csr_dir, common_name = generate_csr(cert_dict)
+    csr_dir, config_dir, common_name = generate_csr(cert_dict)
     crt_dir = CERT_ROOT + common_name + '.crt'
-    subprocess.call('openssl x509 -req -days 365 -CAcreateserial' +
+    subprocess.call('openssl x509 -req -days 365 -extensions v3_req' +
+                    ' -CAserial ' + SRL_DIR +
                     ' -CAkey ' + CA_KEY_DIR +
                     ' -CA ' + CA_CERT_DIR +
                     ' -in ' + csr_dir +
+                    ' -extfile ' + config_dir +
                     ' -out ' + crt_dir, shell=True)
     return crt_dir
 
@@ -103,7 +109,7 @@ def generate_csr(cert_dict):
                     ' -config ' + config_dir +
                     ' -key ' + GEN_KEY_DIR +
                     ' -out ' + csr_dir, shell=True)
-    return csr_dir, common_name
+    return csr_dir, config_dir, common_name
 
 
 def generate_config(cert_dict):

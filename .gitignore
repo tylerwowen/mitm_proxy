@@ -52,3 +52,4 @@ target/
 .python-version
 # dotenv
 .env
+temp_certs

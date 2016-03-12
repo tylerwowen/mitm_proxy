@@ -117,6 +117,7 @@ def handle_request(sock):
     if method == 'CONNECT':
         server_ssl_sock, sock = handle_conn_request(sock, path)
         request = receive_request(sock)
+        request.host = path
     else:
         request = receive_request(sock, requestline)
 
