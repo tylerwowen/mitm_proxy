@@ -5,7 +5,7 @@ import socket
 from urllib.parse import urlsplit
 
 import HTTPSConnectionHandler as https
-from modifier import spoof
+from modifier import response_spoof, request_spoof
 
 
 class MITMProxyServer:
@@ -59,9 +59,9 @@ class Worker:
         request = response = None
         try:
             request, self.client_socket = handle_request(self.client_socket)
-
+            request_spoof(request)
             response = self.get_response(request)
-            spoof(request, response)
+            response_spoof(request, response)
             self.send_response(response.payload)
         except ClientDisconnected:
             pass

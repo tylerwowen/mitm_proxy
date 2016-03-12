@@ -6,11 +6,20 @@ from html.parser import HTMLParser
 IMAGE_DIR = '../resources/whisper.gz'
 
 
-def spoof(request, response):
+def response_spoof(request, response):
     if 'www.buzzfeed.com' in request.host:
         buzzfeed_spoof(request, response)
     if 'cdn-client.wimages.net' in request.host:
         whisper_spoof(response)
+
+
+def request_spoof(request):
+    if 'api.tumblr.com' in request.host:
+        if b'/v2/search/' in request.payload:
+            tumblr_spoof(request)
+        if b'/v2/mobile/search' in request.payload:
+            tumblr_spoof_button_pressed(request)
+
 
 
 def buzzfeed_spoof(request, response):
@@ -44,6 +53,18 @@ def whisper_spoof(response):
         data = image.read()
         body = bytes(format(len(data), 'x'), 'ascii') + b'\r\n' + data + b'\r\n0\r\n\r\n'
         response.replace_body(body)
+
+
+def tumblr_spoof(request):
+    req_str = str(request.payload, 'iso-8859-1')
+    req_str = re.sub(r'/v2/search/.*\?', '/v2/search/panda?', req_str)
+    request.payload = bytes(req_str, 'iso-8859-1')
+
+
+def tumblr_spoof_button_pressed(request):
+    req_str = str(request.payload, 'iso-8859-1')
+    req_str = re.sub(r'&query=.*&', '&query=panda&', req_str)
+    request.payload = bytes(req_str, 'iso-8859-1')
 
 
 class BuzzFeedHTMLParser(HTMLParser):
