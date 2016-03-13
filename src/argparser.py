@@ -6,16 +6,10 @@ parser.add_argument('-p', '--port', type=int, required=True,
                     help='The port server will be listening on')
 parser.add_argument('-n', '--numworker', metavar='NUM_OF_WORKER', type=int, default=10,
                     help='The number of workers in the thread pool used for handling concurrent HTTP requests.')
-parser.add_argument('-t', '--timeout', type=int, default=-1,
+parser.add_argument('-t', '--timeout', type=int, default=999,
                     help='The time (seconds) to wait before give up waiting for response from server. '
                          '(default: ?1, meaning infinite)')
-parser.add_argument('-l', '--log',
+parser.add_argument('-l', '--log', default=None,
                     help='Logs all the HTTP requests and their corresponding responses under the directory log.')
 
 args = parser.parse_args()
-
-if not args.timeout:
-    args.timeout = 9999
-
-if not args.numworker:
-    args.numworker = 10

@@ -21,9 +21,9 @@ class MITMProxyServer:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.bind(('', 0))
         self.socket.listen(20)
-        print('listening at port ', self.socket.getsockname()[1])
+        print('listening at ', self.socket.getsockname()[0], self.socket.getsockname()[1])
 
-    def run(self, num_workers=10, timeout=9999, log=None):
+    def run(self, num_workers, timeout, log=None):
         prepare_log_dir(log)
         index = 0
         self.executor = concurrent.futures.ThreadPoolExecutor(num_workers)
@@ -64,7 +64,7 @@ class Worker:
             response_spoof(request, response)
             self.send_response(response.payload)
         except ClientDisconnected:
-            print('Client disconnected')
+            pass
         except InvalidRequest:
             send_msg(self.client_socket, 400, 'Bad Request')
         except HostNotReachable:

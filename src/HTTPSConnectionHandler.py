@@ -55,7 +55,7 @@ def build_ssl_conns(client_socket, path):
     client_socket.sendall(('HTTP/1.1 %d %s\r\n\r\n' % (200, 'OK')).encode('latin-1', 'strict'))
 
     cert_dict = server_ssl_sock.getpeercert()
-    crt_dir = generate_fake_cert(cert_dict, path)
+    crt_dir = generate_fake_cert(cert_dict)
     client_ssl_sock = build_client_conn(client_socket, crt_dir)
 
     return server_ssl_sock, client_ssl_sock
@@ -90,11 +90,11 @@ def parse_connect_path(path):
     return host, port
 
 
-def generate_fake_cert(cert_dict, path):
-    crt_dir = CERT_ROOT + path[:path.find(':')] + '.crt'
+def generate_fake_cert(cert_dict):
+    crt_dir = CERT_ROOT + cert_dict['serialNumber'] + '.crt'
     if os.path.isfile(crt_dir):
         return crt_dir
-    csr_dir, config_dir, common_name = generate_csr(cert_dict)
+    csr_dir, config_dir = generate_csr(cert_dict)
     subprocess.call('openssl x509 -req -days 365 -extensions v3_req' +
                     ' -CAserial ' + SRL_DIR +
                     ' -CAkey ' + CA_KEY_DIR +
@@ -106,13 +106,13 @@ def generate_fake_cert(cert_dict, path):
 
 
 def generate_csr(cert_dict):
-    common_name, config_dir = generate_config(cert_dict)
-    csr_dir = CERT_ROOT + common_name + '.csr'
+    config_dir = generate_config(cert_dict)
+    csr_dir = CERT_ROOT + cert_dict['serialNumber'] + '.csr'
     subprocess.call('openssl req -new' +
                     ' -config ' + config_dir +
                     ' -key ' + GEN_KEY_DIR +
                     ' -out ' + csr_dir, shell=True, stderr=subprocess.DEVNULL)
-    return csr_dir, config_dir, common_name
+    return csr_dir, config_dir
 
 
 def generate_config(cert_dict):
@@ -121,7 +121,7 @@ def generate_config(cert_dict):
         if tuple[0][0] == 'commonName':
             common_name = tuple[0][1]
 
-    f = open(CERT_ROOT+common_name+'.cfg', 'w')
+    f = open(CERT_ROOT+cert_dict['serialNumber']+'.cfg', 'w')
     alt_names = cert_dict['subjectAltName']
     if len(alt_names) > 0:
         f.write(SAN_TEMP_ALT)
@@ -133,7 +133,7 @@ def generate_config(cert_dict):
         f.write(SAN_TEMP)
         f.write('CN = ' + common_name + '\n')
     f.close()
-    return common_name, f.name
+    return f.name
 
 
 def save_cert(cert_raw, name):
