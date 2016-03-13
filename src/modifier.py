@@ -1,7 +1,6 @@
 import gzip
 import json
 import re
-from html.parser import HTMLParser
 
 IMAGE_DIR = '../resources/whisper.gz'
 

@@ -64,11 +64,16 @@ class Worker:
             response_spoof(request, response)
             self.send_response(response.payload)
         except ClientDisconnected:
-            pass
+            print('Client disconnected')
+        except InvalidRequest:
+            send_msg(self.client_socket, 400, 'Bad Request')
+        except HostNotReachable:
+            send_msg(self.client_socket, 502, 'Bad Gateway')
         except TimeoutError:
             send_msg(self.client_socket, 504, 'Gateway Timeout')
         except Exception as e:
-            print('error happened', e)
+            send_msg(self.client_socket, 500, 'Internal Server Error')
+            print('Unknown error happened', e)
         finally:
             self.log_traffic(request, response)
             self.cleanup()
@@ -77,7 +82,6 @@ class Worker:
         try:
             self.create_server_conn(request)
         except socket.error:
-            send_msg(self.client_socket, 502, 'Bad Gateway')
             raise HostNotReachable
         self.send_request(request.payload)
         return receive_response(self.server_socket)
@@ -195,7 +199,6 @@ def receive_header(sock, requestline=b''):
                 body_start = last_pair[last_pair.find(end) + 4:]
                 chunks.pop()
                 break
-    print('headers', chunks)
     return b''.join(chunks), body_start
 
 
