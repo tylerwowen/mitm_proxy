@@ -2,8 +2,8 @@
 <project version="4">
   <component name="WebServers">
     <option name="servers">
-      <webServer id="be040125-bbfe-4bf2-93c0-8f77a300dc07" name="csil" url="http://csil.cs.ucsb.edu">
-        <fileTransfer host="csil.cs.ucsb.edu" port="22" rootFolder="/cs/student/ouyang" accessType="SFTP" username="ouyang">
+      <webServer id="be040125-bbfe-4bf2-93c0-8f77a300dc07" name="bullwinkle" url="http://bullwinkle.cs.ucsb.edu">
+        <fileTransfer host="bullwinkle.cs.ucsb.edu" port="22" rootFolder="/cs/student/ouyang" accessType="SFTP" username="ouyang">
           <advancedOptions>
             <advancedOptions dataProtectionLevel="Private" />
           </advancedOptions>

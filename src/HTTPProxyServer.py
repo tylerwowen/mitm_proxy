@@ -41,6 +41,8 @@ class MITMProxyServer:
 
 def prepare_log_dir(log):
         if log is not None:
+            if not os.path.isabs(log):
+                log = os.path.join('../', log)
             if os.path.exists(log):
                 shutil.rmtree(log)
             os.mkdir(log)

@@ -1,3 +1,16 @@
+
+# Run
+Please cd to src and run `python3 mproxy.py -p port`
+
+# Known problem
+CSIL has pyopenssl installed only in python2.7, but my implementation is in python 3. I didn't realize it until about to turn in. There are two ways to resolve it.
+
+1. Run it on a machine with pyopenssl installed for python 3.3+.
+2. cd to `scr2` and run `python3 main.py -p port`. I implemented my program without pyopenssl first. It works well (actually stabler) except it sets SNI to the hostname getting from CONNECT command, instead of getting from client hell0o.
+
+
+## Part 3
+
 ## Periscope
 1. Send a REST call to path `/api/v2/followers`, with method `POST`. In the request body, the requested user's ID and a coockie are included in a JSON string. See `1328_169.231.16.159_api.periscope.tv:443`
 
