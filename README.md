@@ -5,49 +5,26 @@ Please cd to `src` and run `python3 mproxy.py -p port`
 ## Certificates
 The root certificate is `certificates/MITM_CA.crt`. The key used to generate fake certificates is `certificates/cer_gen.key`.
 
-## Known problems
-CSIL has pyopenssl installed only for python2.7, but my implementation is in python 3. I didn't realize pyopenssl is not installed for python3.3 until time about to turn in. I tried to import OpenSSL before I started to use it, and it worked, but obviously I checked the wrong version.
+## Two versions
 
-Luckily, I have two working versions, one with pyopenssl and one without it. Thus there are two ways to resolve the problem:
 
-### 1. Run it on a machine with pyopenssl installed for python 3.3+.
+### Complete version
 
 cd to `src` and run `python3 mproxy.py -p port`
 
-This is the latest version I implemented. It uses pyopenssl to get SNI. One potential problem is the log path. I was trying to start the whole process in the root directory, but there are some path issues that I didn't have time to resolve, so I ended up running it in src. This hack causes a few minor problems.
+This is the latest version I implemented. It uses pyopenssl to get SNI.
 
-First, the indentation is incorrect. In file `HTTPProxyServer.py `, line 43 - 48, indentation should be reduced. It won't work without re-indentation. Sorry about that.
 
-Also, if you call it with `-l logfolder`, the folder will be created in the program root directory (`../`). It is safe to call it with an absolute path though, like `/tmp/logs`. All because of the following two lines:
+### Stable version
 
-```python
-if not os.path.isabs(log):
-    log = os.path.join('../', log)
+cd to `src2` and run `python3 mproxy.py -p port`.
 
-```
-
-### 2. cd to `src2` and run `python3 main.py -p port`.
-
-I implemented my program without pyopenssl first. It works well (actually stabler) except it sets SNI to the hostname getting from `CONNECT` command, instead of getting from client hello.
+This version works well (actually stabler) except it sets SNI to the hostname getting from `CONNECT` command, instead of getting from client hello.
 
 This version does not have log file path issues. Most differences between the two version are in `HTTPSConnectionHandler.py`, where I adapted pyopenssl (`import OpenSSL`). The problem of this version is that if the actual SNI is different from the host name after `CONNECT`, the client won't be able to connect to the server it requests. According to my test, this case is rare. On the other hand, this version starts SSL handshake when certificates are ready, the chance of timeout is low. That's why I think this is stabler.
 
-## Part 1
-Everything works.
 
-## Part 2
-### Periscope
-1. Send a REST call to path `/api/v2/followers`, with method `POST`. In the request body, the requested user's ID and a coockie are included in a JSON string. See `1328_169.231.16.159_api.periscope.tv:443`
-
-2. Send a REST call to path `/api/v2/getBroadcasts`, with method `POST`. The body JSON contains the `broadcast_ids`. See `1415_169.231.16.159_api.periscope.tv:443`
-
-### Yelp
-1. Sand a GET request with searching parameters (e.g. 'Starbucks') encoded in the URL to endpoint `/search`. See `logs/677_169.231.16.159_auto-api.yelp.com:443`
-
-2. Sand a POST request with parameters encoded in the URL to endpoint `/bookmarks/add`. See `logs/719_169.231.16.159_auto-api.yelp.com:443`
-
-
-## Part 3
+## Spoof
 All four hacks work. These functionalities are implemented in `src/modifier.py`. It has two functions `request_spoof(request)` for modifying requests and `response_spoof(request, response)` for responses.
 
 ### BuzzFeed
