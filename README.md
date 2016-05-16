@@ -1,3 +1,4 @@
+[![Code Issues](https://www.quantifiedcode.com/api/v1/project/81eebaf6692d4c3da16e80d83e19f353/badge.svg)](https://www.quantifiedcode.com/app/project/81eebaf6692d4c3da16e80d83e19f353)
 
 ## Run
 Please cd to `src` and run `python3 mproxy.py -p port`
