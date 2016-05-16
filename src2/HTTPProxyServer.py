@@ -272,7 +272,7 @@ def receive_body_chunked(sock, body_start):
 
 
 def send_msg(sock, code, msg):
-    sock.sendall(('HTTP/1.1 %d %s\r\n\r\n' % (code, msg)).encode('latin-1', 'strict'))
+    sock.sendall(('HTTP/1.1 {0:d} {1!s}\r\n\r\n'.format(code, msg)).encode('latin-1', 'strict'))
 
 
 class Request:
