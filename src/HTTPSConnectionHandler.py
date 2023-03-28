@@ -72,7 +72,7 @@ class ManInTheMiddle:
         self.server_ssl_sock = None
 
     def start_hacking(self):
-        self.client_socket.sendall(('HTTP/1.1 %d %s\r\n\r\n' % (200, 'OK')).encode('latin-1', 'strict'))
+        self.client_socket.sendall(('HTTP/1.1 {0:d} {1!s}\r\n\r\n'.format(200, 'OK')).encode('latin-1', 'strict'))
         self.accept_client_conn()
 
     def accept_client_conn(self):

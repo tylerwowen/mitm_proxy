@@ -52,7 +52,7 @@ OU = MyDivision
 
 def build_ssl_conns(client_socket, path):
     server_ssl_sock = build_server_conn(path)
-    client_socket.sendall(('HTTP/1.1 %d %s\r\n\r\n' % (200, 'OK')).encode('latin-1', 'strict'))
+    client_socket.sendall(('HTTP/1.1 {0:d} {1!s}\r\n\r\n'.format(200, 'OK')).encode('latin-1', 'strict'))
 
     cert_dict = server_ssl_sock.getpeercert()
     crt_dir = generate_fake_cert(cert_dict)
